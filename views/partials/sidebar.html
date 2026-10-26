@@ -1,0 +1,89 @@
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <img src="/img/icon.png" alt="WEB_TS" class="sidebar-logo"/>
+    <span class="sidebar-title">WEB_TS</span>
+    <span class="sidebar-pro">PRO</span>
+  </div>
+
+  <ul class="sidebar-nav">
+    <li>
+      <a href="/dashboard" class="{{ 'active' if currentPath.startsWith('/dashboard') }}">
+        <i class="fa-solid fa-gauge"></i> Dashboard
+      </a>
+    </li>
+
+    {% if user.role !== 'seller' %}
+    <li>
+      <a href="/users" class="{{ 'active' if currentPath === '/users' or currentPath === '/users/' }}">
+        <i class="fa-solid fa-users"></i> Manage IDs
+      </a>
+    </li>
+    {% endif %}
+
+    {% if user.role === 'controller' %}
+    <li>
+      <a href="/users/all" class="{{ 'active' if currentPath.startsWith('/users/all') }}">
+        <i class="fa-solid fa-address-book"></i> All IDs
+      </a>
+    </li>
+    {% endif %}
+
+    <li>
+      <a href="/keys" class="{{ 'active' if currentPath.startsWith('/keys') }}">
+        <i class="fa-solid fa-key"></i> Keys
+      </a>
+    </li>
+
+    <li>
+      <a href="/transfers" class="{{ 'active' if currentPath.startsWith('/transfers') }}">
+        <i class="fa-solid fa-right-left"></i> Transfers
+      </a>
+    </li>
+
+    {% if user.role !== 'seller' %}
+    <li>
+      <a href="/credits" class="{{ 'active' if currentPath.startsWith('/credits') }}">
+        <i class="fa-solid fa-coins"></i> Credits
+      </a>
+    </li>
+    {% endif %}
+
+    {% if user.role === 'controller' or user.role === 'developer' %}
+    <li>
+      <a href="/tickets" class="{{ 'active' if currentPath.startsWith('/tickets') }}">
+        <i class="fa-solid fa-ticket"></i> Tickets
+      </a>
+    </li>
+    {% endif %}
+
+    {% if user.role === 'controller' %}
+    <li class="sidebar-section">System</li>
+    <li>
+      <a href="/news/system" class="{{ 'active' if currentPath === '/news/system' }}">
+        <i class="fa-solid fa-bullhorn"></i> System News
+      </a>
+    </li>
+    <li>
+      <a href="/news/software" class="{{ 'active' if currentPath === '/news/software' }}">
+        <i class="fa-solid fa-download"></i> Software News
+      </a>
+    </li>
+    {% endif %}
+
+    <li class="sidebar-section">Account</li>
+    <li>
+      <a href="/profile" class="{{ 'active' if currentPath.startsWith('/profile') }}">
+        <i class="fa-solid fa-circle-user"></i> Profile
+      </a>
+    </li>
+    <li>
+      <a href="/auth/logout">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+      </a>
+    </li>
+  </ul>
+
+  <div class="sidebar-footer">
+    v{{ appVersion }}
+  </div>
+</nav>

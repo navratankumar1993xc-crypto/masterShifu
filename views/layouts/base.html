@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ title }} — {{ appName }}</title>
+  <link rel="icon" href="/img/icon.ico" type="image/x-icon"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="/css/panel.css"/>
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+{% include "partials/sidebar.html" %}
+
+<div class="main-content">
+  {% include "partials/topbar.html" %}
+  <div class="content-wrap">
+    {% if impersonator %}
+    <div class="alert alert-info d-flex justify-content-between align-items-center gap-2">
+      <div>
+        <i class="fa-solid fa-user-secret me-1"></i>
+        Controller view: logged in as <strong>{{ user.email }}</strong> ({{ user.role | roleName }})
+      </div>
+      <form method="POST" action="/auth/return" class="m-0">
+        <button class="btn btn-sm btn-primary"><i class="fa-solid fa-arrow-left me-1"></i>Return to Controller</button>
+      </form>
+    </div>
+    {% endif %}
+    {% include "partials/alerts.html" %}
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/panel.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

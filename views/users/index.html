@@ -1,0 +1,262 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold">Manage IDs</h2>
+    <p class="text-muted mb-0">All IDs under you. You can create: {% for r in roles %}{{ r | roleName }}{{ ', ' if not loop.last }}{% endfor %}.</p>
+  </div>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
+    <i class="fa-solid fa-plus me-1"></i>New ID
+  </button>
+</div>
+
+<form method="GET" action="/users" class="d-flex gap-2 mb-3" style="max-width:560px">
+  <input type="text" name="search" class="form-control form-control-sm" value="{{ search }}" placeholder="Search User ID / name"/>
+  <select name="role" class="form-select form-select-sm" onchange="this.form.submit()">
+    <option value="">All roles</option>
+    {% for r in roles %}
+    <option value="{{ r }}" {{ 'selected' if roleFilter === r }}>{{ r | roleName }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+{# ── Children table ────────────────────────────────────────────────────── #}
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    {% if children.length %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>User ID / Name</th>
+            <th>Role</th>
+            <th>Created By</th>
+            <th>Status</th>
+            <th>Credits</th>
+            <th>Due (₹)</th>
+            <th>Due Deadline</th>
+            <th>Created</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in children %}
+          <tr>
+            <td>
+              <div class="fw-semibold">{{ c.email }}</div>
+              <small class="text-muted">{{ c.name }}</small>
+            </td>
+            <td><span class="badge bg-dark">{{ c.role | roleName }}</span></td>
+            <td class="small">{{ 'You' if c.parent_id === user.id else c.parent_email }}</td>
+            <td>
+              {% if c.status === 'active' %}
+                <span class="badge bg-success">Active</span>
+              {% elif c.status === 'suspended_due' %}
+                <span class="badge bg-warning text-dark">Suspended (Due)</span>
+              {% else %}
+                <span class="badge bg-secondary">Inactive</span>
+              {% endif %}
+            </td>
+            <td>{{ c.credits | number }}</td>
+            <td>{{ c.due_amount | number }}</td>
+            <td class="small">{{ c.due_deadline | date('datetime') if c.due_deadline else '—' }}</td>
+            <td class="small">{{ c.created_at | date('date') }}</td>
+            <td class="text-end">
+              <div class="btn-group btn-group-sm">
+                {% if c.parent_id === user.id %}
+                {# Edit #}
+                <button class="btn btn-outline-primary" data-bs-toggle="modal"
+                  data-bs-target="#editModal{{ c.id }}" title="Edit">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                {# Toggle status #}
+                <form method="POST" action="/users/toggle-status" class="d-inline">
+                  <input type="hidden" name="id" value="{{ c.id }}"/>
+                  <input type="hidden" name="status" value="{{ 'active' if c.status === 'inactive' else 'inactive' }}"/>
+                  <button class="btn {{ 'btn-outline-success' if c.status === 'inactive' else 'btn-outline-warning' }}"
+                    title="{{ 'Activate' if c.status === 'inactive' else 'Deactivate' }}"
+                    onclick="return confirm('{{ 'Activate' if c.status === 'inactive' else 'Deactivate' }} {{ c.email }} along with ALL IDs and keys under it?')">
+                    <i class="fa-solid {{ 'fa-check' if c.status === 'inactive' else 'fa-ban' }}"></i>
+                  </button>
+                </form>
+                {# Receive due #}
+                {% if c.due_amount > 0 %}
+                <button class="btn btn-outline-info" data-bs-toggle="modal"
+                  data-bs-target="#dueModal{{ c.id }}" title="Receive Due">
+                  <i class="fa-solid fa-hand-holding-dollar"></i>
+                </button>
+                {% endif %}
+                {% endif %}
+                {# Transfer to another parent #}
+                <button class="btn btn-outline-secondary" data-bs-toggle="modal"
+                  data-bs-target="#transferModal{{ c.id }}" title="Transfer to another parent">
+                  <i class="fa-solid fa-right-left"></i>
+                </button>
+                {# Delete (controller only) #}
+                {% if user.role === 'controller' %}
+                <form method="POST" action="/users/delete" class="d-inline">
+                  <input type="hidden" name="id" value="{{ c.id }}"/>
+                  <button class="btn btn-outline-danger" title="Delete"
+                    onclick="return confirm('Delete {{ c.email }} and ALL descendants? This cannot be undone.')">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fa-solid fa-users fa-2x mb-2"></i>
+      <p>No IDs yet. Create the first one.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Create Modal ─────────────────────────────────────────────────────── #}
+<div class="modal fade" id="createModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="/users/create">
+        <div class="modal-header">
+          <h5 class="modal-title">New ID</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Role</label>
+            <select name="role" class="form-select" required>
+              {% for r in roles %}
+              <option value="{{ r }}">{{ r | roleName }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">User ID (Email)</label>
+            <input type="email" name="email" class="form-control" required placeholder="seller@example.com"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password <small class="text-muted">(min 6 chars)</small></label>
+            <input type="text" name="password" class="form-control" required minlength="6"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Initial Credits</label>
+            <input type="number" name="credits" class="form-control" value="0" min="0"/>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create ID</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# ── Per-row edit and due modals ──────────────────────────────────────── #}
+{% for c in children %}
+
+{# Edit Modal #}
+<div class="modal fade" id="editModal{{ c.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="/users/edit">
+        <input type="hidden" name="user_id" value="{{ c.id }}"/>
+        <div class="modal-header">
+          <h5 class="modal-title">Edit — {{ c.email }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Name</label>
+            <input type="text" name="name" class="form-control" value="{{ c.name }}" required/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">User ID (Email)</label>
+            <input type="email" name="email" class="form-control" value="{{ c.email }}" required/>
+          </div>
+          {% if user.role === 'controller' %}
+          <div class="mb-3">
+            <label class="form-label">New Password <small class="text-muted">(leave blank to keep)</small></label>
+            <input type="text" name="password" class="form-control" minlength="6" placeholder="Leave blank to keep"/>
+          </div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label">Credits</label>
+            <input type="number" name="credits" class="form-control" value="{{ c.credits }}" min="0"/>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Transfer Account Modal #}
+<div class="modal fade" id="transferModal{{ c.id }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form method="POST" action="/transfers/account"
+            onsubmit="return confirm('Transfer {{ c.email }} to a new parent? Keys, due and history preserve rahenge.');">
+        <input type="hidden" name="user_id" value="{{ c.id }}"/>
+        <div class="modal-header">
+          <h6 class="modal-title fw-bold">Transfer — {{ c.email }}</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label small fw-semibold">New Parent Email <small class="text-muted">(another {{ user.role | roleName }})</small></label>
+          <input type="email" name="new_parent_email" class="form-control form-control-sm"
+                 placeholder="parent@example.com" required/>
+          <div class="mt-2 text-muted small">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            Is ID ki saari keys, payment history aur due records surakshit rahenge.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-primary">Transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Receive Due Modal #}
+{% if c.due_amount > 0 %}
+<div class="modal fade" id="dueModal{{ c.id }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form method="POST" action="/users/receive-due">
+        <input type="hidden" name="user_id" value="{{ c.id }}"/>
+        <div class="modal-header">
+          <h5 class="modal-title">Receive Due — {{ c.email }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Outstanding: <strong>₹{{ c.due_amount | number }}</strong></p>
+          <label class="form-label">Amount to Receive (₹)</label>
+          <input type="number" name="receive_amount" class="form-control"
+                 value="{{ c.due_amount }}" min="1" max="{{ c.due_amount }}" required/>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">Confirm Receive</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endfor %}
+
+{% endblock %}

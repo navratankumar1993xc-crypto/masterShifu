@@ -1,0 +1,182 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+
+<div class="page-header mb-4">
+  <h2 class="fw-bold">Dashboard</h2>
+  <p class="text-muted">Welcome back, {{ user.name }}
+    <span class="badge bg-primary ms-1">{{ user.role | roleName }}</span>
+  </p>
+</div>
+
+{# ── Stat cards ───────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  {% if user.role === 'controller' %}
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-primary-soft"><i class="fa-solid fa-users"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">Total Users</div>
+          <div class="stat-value">{{ (stats.userCounts.developer or 0) + (stats.userCounts.super_master or 0) + (stats.userCounts.admin or 0) + (stats.userCounts.super or 0) + (stats.userCounts.seller or 0) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-success-soft"><i class="fa-solid fa-key"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">Active Keys</div>
+          <div class="stat-value">{{ stats.keyCounts.active or 0 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-warning-soft"><i class="fa-solid fa-ticket"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">Tickets Today</div>
+          <div class="stat-value">{{ stats.ticketToday }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-danger-soft"><i class="fa-solid fa-file-lines"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">Total Tickets</div>
+          <div class="stat-value">{{ stats.totalTickets }}</div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-primary-soft"><i class="fa-solid fa-coins"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">My Credits</div>
+          <div class="stat-value">{{ user.credits | number }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-success-soft"><i class="fa-solid fa-key"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">Active Keys</div>
+          <div class="stat-value">{{ stats.keyCounts.active or 0 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-warning-soft"><i class="fa-solid fa-hourglass-half"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">Expired Keys</div>
+          <div class="stat-value">{{ stats.keyCounts.expired or 0 }}</div>
+        </div>
+      </div>
+    </div>
+    {% if stats.childrenCount is defined and stats.targetRole %}
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-info-soft"><i class="fa-solid fa-user-group"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">My IDs</div>
+          <div class="stat-value">{{ stats.childrenCount }}</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  {% endif %}
+</div>
+
+{# Due warning #}
+{% if user.role !== 'controller' and user.due_amount > 0 %}
+<div class="alert alert-warning d-flex align-items-center gap-3 mb-4">
+  <i class="fa-solid fa-triangle-exclamation fa-lg"></i>
+  <div>
+    <strong>Due Pending: ₹{{ user.due_amount | number }}</strong>
+    {% if user.due_deadline %}
+    — Deadline: {{ user.due_deadline | date('datetime') }}
+    {% endif %}
+    <br><small>Clear dues to avoid account suspension.</small>
+  </div>
+</div>
+{% endif %}
+
+{# ── Controller settings ───────────────────────────────────────────────── #}
+{% if user.role === 'controller' %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white border-bottom py-3">
+    <h5 class="m-0 fw-bold"><i class="fa-solid fa-sliders me-2 text-primary"></i>Global Settings</h5>
+  </div>
+  <div class="card-body p-4">
+    <form method="POST" action="/dashboard/settings">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Download ZIP URL</label>
+          <input type="url" name="download_zip_url" class="form-control"
+                 value="{{ stats.settings.download_zip_url }}" placeholder="https://…"/>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Gift Offer Message</label>
+          <input type="text" name="gift_offer_message" class="form-control"
+                 value="{{ stats.settings.gift_offer_message }}" placeholder="Offer message…"/>
+        </div>
+        <div class="col-auto">
+          <div class="form-check form-switch mt-2">
+            <input class="form-check-input" type="checkbox" name="demo_enabled" value="1"
+                   id="demoToggle" {{ 'checked' if stats.settings.demo_creation_enabled === '1' }}/>
+            <label class="form-check-label" for="demoToggle">Enable Demo Key Creation</label>
+          </div>
+        </div>
+        <div class="col-auto">
+          <div class="form-check form-switch mt-2">
+            <input class="form-check-input" type="checkbox" name="gift_offer_enabled" value="1"
+                   id="giftToggle" {{ 'checked' if stats.settings.gift_offer_enabled === '1' }}/>
+            <label class="form-check-label" for="giftToggle">Enable Gift Offer (2 keys in 7 days = 1 free credit)</label>
+          </div>
+        </div>
+        <div class="col-auto">
+          <div class="form-check form-switch mt-2">
+            <input class="form-check-input" type="checkbox" name="bonus_offer_enabled" value="1"
+                   id="bonusToggle" {{ 'checked' if stats.settings.bonus_offer_enabled === '1' }}/>
+            <label class="form-check-label" for="bonusToggle">Enable 365-Day Bonus Key (10 keys/month + 10 running)</label>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary mt-3"><i class="fa-solid fa-save me-1"></i>Save Settings</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{# ── Recent transactions ─────────────────────────────────────────────────── #}
+{% if recentTxns.length %}
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white border-bottom py-3">
+    <h5 class="m-0 fw-bold"><i class="fa-solid fa-clock-rotate-left me-2 text-secondary"></i>Recent Transactions</h5>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Type</th><th>Details</th><th>Credits</th><th>Amount</th><th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in recentTxns %}
+        <tr>
+          <td><span class="badge bg-secondary">{{ t.txn_type }}</span></td>
+          <td class="small text-muted">{{ t.note or '—' }}</td>
+          <td>{{ t.credits or '—' }}</td>
+          <td>{{ ('₹' + t.amount) if t.amount else '—' }}</td>
+          <td class="small">{{ t.created_at | date('datetime') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

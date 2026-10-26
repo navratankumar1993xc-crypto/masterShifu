@@ -1,0 +1,29 @@
+{% if flash.success %}
+  {% for msg in flash.success %}
+  <div class="alert alert-success alert-dismissible fade show d-flex align-items-start gap-2 mb-3" role="alert">
+    <i class="fa-solid fa-circle-check mt-1"></i>
+    <div>{{ msg | safe }}</div>
+    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+{% endif %}
+
+{% if flash.error %}
+  {% for msg in flash.error %}
+  <div class="alert alert-danger alert-dismissible fade show d-flex align-items-start gap-2 mb-3" role="alert">
+    <i class="fa-solid fa-triangle-exclamation mt-1"></i>
+    <div>{{ msg | safe }}</div>
+    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+{% endif %}
+
+{% if systemNews and systemNews.length %}
+  {% for n in systemNews %}
+  <div class="alert alert-info alert-dismissible fade show d-flex gap-2 mb-2" role="alert">
+    <i class="fa-solid fa-bullhorn mt-1"></i>
+    <div><strong>Notice:</strong> {{ n.message }}</div>
+    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+{% endif %}

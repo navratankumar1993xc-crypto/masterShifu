@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — {{ appName }}</title>
+  <link rel="icon" href="/img/icon.ico" type="image/x-icon"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="/css/panel.css"/>
+  <style>
+    body { background: #0f172a; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .login-card { width: 100%; max-width: 400px; }
+    .login-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+    .login-brand img { width: 36px; height: 36px; border-radius: 6px; }
+    .login-brand .brand-name { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; letter-spacing: 1px; }
+    .login-brand .brand-pro  { font-size: .65rem; background: #3b82f6; color: #fff; padding: 1px 6px; border-radius: 4px; font-weight: 700; }
+  </style>
+</head>
+<body>
+<div class="login-card card shadow-lg border-0 p-4" style="background:#1e293b;">
+  <div class="login-brand justify-content-center">
+    <img src="/img/icon.png" alt="WEB_TS"/>
+    <span class="brand-name">WEB_TS</span>
+    <span class="brand-pro">PRO</span>
+  </div>
+
+  <h5 class="text-center text-light mb-4">Panel Login</h5>
+
+  {% if error === 'suspended_due' %}
+  <div class="alert alert-warning d-flex gap-2">
+    <i class="fa-solid fa-lock"></i>
+    {% if dueInfo and dueInfo.self %}
+    <div>Your account is blocked because of due payment of <strong>₹{{ dueInfo.due_amount | number }}</strong>. Please contact your upline to clear dues.</div>
+    {% elif dueInfo and dueInfo.status === 'inactive' %}
+    <div>Your access is blocked because your parent (<strong>{{ dueInfo.role | roleName }}: User ID {{ dueInfo.email }}</strong>) is deactivated. Please contact them to restore access.</div>
+    {% elif dueInfo %}
+    <div>Your access is blocked because your parent (<strong>{{ dueInfo.role | roleName }}: User ID {{ dueInfo.email }}</strong>) is blocked because of due payment of <strong>₹{{ dueInfo.due_amount | number }}</strong>. Please contact them to restore access.</div>
+    {% else %}
+    <div>Your account or upline has pending dues. Please contact your upline to clear dues.</div>
+    {% endif %}
+  </div>
+  {% elif error %}
+  <div class="alert alert-danger d-flex gap-2">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <div>{{ error }}</div>
+  </div>
+  {% endif %}
+
+  <form method="POST" action="/auth/login" autocomplete="off">
+    <div class="mb-3">
+      <label class="form-label text-secondary small">User ID / Email</label>
+      <div class="input-group">
+        <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fa-solid fa-user"></i></span>
+        <input type="email" name="email" class="form-control bg-dark border-secondary text-light"
+               placeholder="admin@webts.com" required autofocus/>
+      </div>
+    </div>
+    <div class="mb-4">
+      <label class="form-label text-secondary small">Password</label>
+      <div class="input-group">
+        <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fa-solid fa-lock"></i></span>
+        <input type="password" name="password" id="pwdField" class="form-control bg-dark border-secondary text-light"
+               placeholder="••••••••" required/>
+        <button type="button" class="btn btn-outline-secondary border-secondary" onclick="togglePwd()">
+          <i class="fa-solid fa-eye" id="eyeIcon"></i>
+        </button>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary w-100 fw-semibold">
+      <i class="fa-solid fa-right-to-bracket me-2"></i>Login
+    </button>
+  </form>
+
+  {% if demoKey %}
+  <div class="alert alert-success mt-3 mb-0 text-center">
+    <div class="small mb-1">{{ 'Your demo key (already created):' if demoRepeat else 'Demo key created!' }}</div>
+    <div class="d-flex justify-content-center align-items-center gap-2">
+      <strong class="font-monospace fs-5" id="demoKeyVal">{{ demoKey }}</strong>
+      <button type="button" class="btn btn-sm btn-outline-success" onclick="copyDemo(this)" title="Copy">
+        <i class="fa-solid fa-copy"></i>
+      </button>
+    </div>
+    <div class="small mt-1">Valid till {{ demoExpiry | date('date') }}</div>
+  </div>
+  {% elif demoEnabled %}
+  <form method="POST" action="/auth/demo" class="mt-3">
+    <button type="submit" class="btn btn-outline-warning w-100 fw-semibold"
+            onclick="return confirm('Create a free DEMO key (2-day validity)?')">
+      <i class="fa-solid fa-flask me-2"></i>Create Demo Key
+    </button>
+  </form>
+  {% endif %}
+
+  {% if downloadUrl %}
+  <div class="text-center mt-3">
+    <a href="{{ downloadUrl }}" class="btn btn-sm btn-outline-success" target="_blank">
+      <i class="fa-solid fa-download me-1"></i> Download WEB_TS
+    </a>
+  </div>
+  {% endif %}
+
+  <p class="text-center text-muted small mt-3 mb-0">{{ appName }} v{{ appVersion }}</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function togglePwd() {
+  const f = document.getElementById('pwdField');
+  const e = document.getElementById('eyeIcon');
+  if (f.type === 'password') { f.type = 'text'; e.classList.replace('fa-eye','fa-eye-slash'); }
+  else { f.type = 'password'; e.classList.replace('fa-eye-slash','fa-eye'); }
+}
+function copyDemo(btn) {
+  navigator.clipboard.writeText(document.getElementById('demoKeyVal').textContent.trim());
+  btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+}
+</script>
+</body>
+</html>

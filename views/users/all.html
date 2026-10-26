@@ -1,0 +1,109 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold">All IDs</h2>
+    <p class="text-muted mb-0">Every account in the panel. Login as any ID or delete it.</p>
+  </div>
+  <span class="badge bg-primary fs-6">{{ users.length }} IDs</span>
+</div>
+
+<form method="GET" action="/users/all" class="row g-2 mb-3">
+  <div class="col-md-5">
+    <input type="text" name="search" class="form-control" value="{{ search }}" placeholder="Search User ID / name"/>
+  </div>
+  <div class="col-md-3">
+    <select name="role" class="form-select">
+      <option value="">All roles</option>
+      {% for r in roles %}
+      <option value="{{ r }}" {{ 'selected' if roleFilter === r }}>{{ r | roleName }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <button class="btn btn-outline-primary w-100"><i class="fa-solid fa-magnifying-glass me-1"></i>Filter</button>
+  </div>
+</form>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    {% if users.length %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>User ID / Name</th>
+            <th>Role</th>
+            <th>Parent</th>
+            <th>Status</th>
+            <th>Credits</th>
+            <th>Due (₹)</th>
+            <th>Created</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>
+              <div class="fw-semibold">{{ u.email }}</div>
+              <small class="text-muted">{{ u.name }}</small>
+            </td>
+            <td><span class="badge bg-dark">{{ u.role | roleName }}</span></td>
+            <td class="small">{{ u.parent_email or '—' }}</td>
+            <td>
+              {% if u.status === 'active' %}
+                <span class="badge bg-success">Active</span>
+              {% elif u.status === 'suspended_due' %}
+                <span class="badge bg-warning text-dark">Suspended (Due)</span>
+              {% else %}
+                <span class="badge bg-secondary">Inactive</span>
+              {% endif %}
+            </td>
+            <td>{{ u.credits | number }}</td>
+            <td>{{ u.due_amount | number }}</td>
+            <td class="small">{{ u.created_at | date('date') }}</td>
+            <td class="text-end">
+              <div class="btn-group btn-group-sm">
+                <form method="POST" action="/users/impersonate" class="d-inline">
+                  <input type="hidden" name="id" value="{{ u.id }}"/>
+                  <button class="btn btn-outline-primary" title="Login as {{ u.email }}">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                  </button>
+                </form>
+                <form method="POST" action="/users/toggle-status" class="d-inline">
+                  <input type="hidden" name="id" value="{{ u.id }}"/>
+                  <input type="hidden" name="back" value="/users/all"/>
+                  <input type="hidden" name="status" value="{{ 'active' if u.status === 'inactive' else 'inactive' }}"/>
+                  <button class="btn {{ 'btn-outline-success' if u.status === 'inactive' else 'btn-outline-warning' }}"
+                    title="{{ 'Activate' if u.status === 'inactive' else 'Deactivate' }}"
+                    onclick="return confirm('{{ 'Activate' if u.status === 'inactive' else 'Deactivate' }} {{ u.email }} along with ALL IDs and keys under it?')">
+                    <i class="fa-solid {{ 'fa-check' if u.status === 'inactive' else 'fa-ban' }}"></i>
+                  </button>
+                </form>
+                <form method="POST" action="/users/delete" class="d-inline">
+                  <input type="hidden" name="id" value="{{ u.id }}"/>
+                  <input type="hidden" name="back" value="/users/all"/>
+                  <button class="btn btn-outline-danger" title="Delete"
+                    onclick="return confirm('Delete {{ u.email }} and ALL descendants? This cannot be undone.')">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fa-solid fa-users fa-2x mb-2"></i>
+      <p>No IDs found.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

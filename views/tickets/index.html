@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="refresh" content="30"/>
+  <title>Ticket Panel — {{ appName }}</title>
+  <link rel="icon" href="/img/icon.ico"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <style>
+    body { background:#0b1220; color:#e5e7eb; font-family:"Segoe UI",sans-serif; }
+    .wrap { max-width:1400px; margin:0 auto; padding:24px; }
+    .brand { color:#34d399; font-size:1.5rem; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:8px;}
+    .brand img { width:28px; height:28px; border-radius:5px;}
+    .filters { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; align-items:flex-end; }
+    .filters input, .filters select, .filters .form-control { background:#1e293b; border-color:#334155; color:#f1f5f9; }
+    .ticket-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+    .ticket-card { background:#1e293b; border:1px solid #334155; border-radius:10px; overflow:hidden; }
+    .ticket-card img { width:100%; display:block; border-bottom:1px solid #334155; }
+    .ticket-body { padding:12px; font-size:.85rem; }
+    .ticket-body .route { font-weight:700; color:#34d399; font-size:1rem; margin-bottom:6px; }
+    .ticket-meta { color:#94a3b8; }
+    .badge-pnr { background:#1d4ed8; color:#fff; padding:2px 8px; border-radius:4px; font-weight:700; }
+    .no-tickets { text-align:center; padding:60px; color:#475569; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <img src="/img/icon.png" alt="WEB_TS"/>
+    WEB_TS <span style="font-size:.7em;background:#3b82f6;padding:1px 7px;border-radius:3px;margin-left:4px;">TICKETS</span>
+  </div>
+  <p style="color:#64748b; margin-bottom:20px;">Auto-refreshes every 30 seconds</p>
+
+  <form method="GET" class="filters">
+    <div>
+      <label class="form-label small mb-1" style="color:#94a3b8">Date</label>
+      <input type="date" name="date" class="form-control form-control-sm" value="{{ dateFilter }}"/>
+    </div>
+    <div>
+      <label class="form-label small mb-1" style="color:#94a3b8">License Key</label>
+      <input type="text" name="license" class="form-control form-control-sm"
+             placeholder="Filter by key…" value="{{ licFilter }}"/>
+    </div>
+    <div style="margin-top:22px">
+      <button type="submit" class="btn btn-sm btn-success">Filter</button>
+      <a href="/tickets" class="btn btn-sm btn-outline-secondary ms-1">Reset</a>
+    </div>
+  </form>
+
+  <p style="color:#64748b; margin-bottom:16px;">{{ tickets.length }} ticket(s) on {{ dateFilter }}</p>
+
+  {% if tickets.length %}
+  <div class="ticket-grid">
+    {% for t in tickets %}
+    <div class="ticket-card">
+      {% if t.img_base64 %}
+      <img src="data:image/png;base64,{{ t.img_base64 }}" alt="Ticket {{ t.pnr }}"
+           loading="lazy"/>
+      {% endif %}
+      <div class="ticket-body">
+        <div class="route">{{ t.src_dest or '?' }}</div>
+        <div class="mb-1">
+          <span class="badge-pnr">{{ t.pnr or 'No PNR' }}</span>
+        </div>
+        <div class="ticket-meta">
+          <div>Train: {{ t.train_no or '—' }} | Pay: {{ t.pay_mode or '—' }}</div>
+          <div>Key: {{ t.license_key or '—' }}</div>
+          <div>IP: {{ t.ip_address or '—' }}</div>
+          <div>Time: {{ t.created_at | date('datetime') }}</div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="no-tickets">
+    <div style="font-size:3rem; margin-bottom:12px;">🎫</div>
+    <p>No tickets found for {{ dateFilter }}.</p>
+  </div>
+  {% endif %}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

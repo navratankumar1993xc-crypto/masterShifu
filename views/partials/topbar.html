@@ -1,0 +1,33 @@
+<header class="topbar">
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+
+  <div class="topbar-right">
+    {% if user.role !== 'controller' %}
+    <div class="topbar-stat">
+      <i class="fa-solid fa-coins text-warning"></i>
+      <span>{{ user.credits | number }} Credits</span>
+    </div>
+    {% if user.due_amount > 0 %}
+    <div class="topbar-stat text-danger">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <span>₹{{ user.due_amount | number }} Due</span>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <div class="topbar-user dropdown">
+      <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="fa-solid fa-circle-user me-1"></i>
+        {{ user.name }}
+        <span class="badge bg-secondary ms-1">{{ user.role | roleName }}</span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="/profile"><i class="fa-solid fa-user me-2"></i>Profile</a></li>
+        <li><hr class="dropdown-divider"/></li>
+        <li><a class="dropdown-item text-danger" href="/auth/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
+      </ul>
+    </div>
+  </div>
+</header>

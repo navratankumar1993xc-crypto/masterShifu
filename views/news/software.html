@@ -1,0 +1,38 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+
+<div class="page-header mb-4">
+  <h2 class="fw-bold">Software News</h2>
+  <p class="text-muted">This message is shown to the desktop app on every license check.</p>
+</div>
+
+<div class="card border-0 shadow-sm" style="max-width:640px">
+  <div class="card-header bg-white py-3">
+    <h5 class="m-0 fw-bold"><i class="fa-solid fa-download me-2 text-primary"></i>Update Software News</h5>
+  </div>
+  <div class="card-body">
+    {% if current %}
+    <div class="alert alert-info small mb-3">
+      <strong>Current message:</strong> {{ current }}
+    </div>
+    {% endif %}
+    <form method="POST" action="/news/software">
+      <div class="mb-3">
+        <label class="form-label">Message <small class="text-muted">(shown in WEB_TS app News field)</small></label>
+        <textarea name="news_message" class="form-control" rows="3"
+                  placeholder="e.g. New update available: v2.0 — Download now!">{{ current }}</textarea>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-paper-plane me-1"></i>Publish
+        </button>
+        <button type="submit" name="action" value="clear" class="btn btn-outline-danger"
+          onclick="return confirm('Clear software news?')">
+          <i class="fa-solid fa-trash me-1"></i>Clear
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

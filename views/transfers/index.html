@@ -1,0 +1,58 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+
+<div class="page-header mb-4">
+  <h2 class="fw-bold mb-0">Transfer Audit</h2>
+  <p class="text-muted mb-0 small">Key aur account transfers ka history (aapki branch).</p>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    {% if transfers.length %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Subject</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Due Moved</th>
+            <th>By</th>
+            <th>When</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in transfers %}
+          <tr>
+            <td class="text-muted">{{ loop.index }}</td>
+            <td>
+              {% if t.transfer_type === 'key' %}
+                <span class="badge bg-primary"><i class="fa-solid fa-key me-1"></i>Key</span>
+              {% else %}
+                <span class="badge bg-info text-dark"><i class="fa-solid fa-user-group me-1"></i>Account</span>
+              {% endif %}
+            </td>
+            <td class="font-monospace">{{ t.subject_label or ('#' + t.subject_id) }}</td>
+            <td class="text-muted">{{ t.from_email or '—' }}</td>
+            <td class="text-muted">{{ t.to_email or '—' }}</td>
+            <td>{% if t.due_moved and t.due_moved > 0 %}<span class="badge bg-warning text-dark">₹{{ t.due_moved }}</span>{% else %}—{% endif %}</td>
+            <td class="text-muted">{{ t.moved_by_email or '—' }}</td>
+            <td class="text-muted">{{ t.created_at | date('YYYY-MM-DD HH:mm') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="px-3 py-2 text-muted small border-top">Showing {{ transfers.length }} transfer(s)</div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fa-solid fa-right-left fa-3x mb-3 d-block"></i>
+      <p class="mb-0">No transfers yet.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

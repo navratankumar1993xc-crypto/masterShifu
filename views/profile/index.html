@@ -1,0 +1,73 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+
+<div class="page-header mb-4">
+  <h2 class="fw-bold">My Profile</h2>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-5">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white py-3">
+        <h5 class="m-0 fw-bold"><i class="fa-solid fa-circle-user me-2 text-primary"></i>Account Info</h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-borderless mb-0 small">
+          <tr><th class="text-muted w-40">Name</th><td>{{ user.name }}</td></tr>
+          <tr><th class="text-muted">User ID</th><td>{{ user.email }}</td></tr>
+          <tr><th class="text-muted">Role</th>
+            <td><span class="badge bg-primary">{{ user.role | roleName }}</span></td></tr>
+          <tr><th class="text-muted">Status</th>
+            <td>
+              {% if user.status === 'active' %}
+                <span class="badge bg-success">Active</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">{{ user.status }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr><th class="text-muted">Credits</th><td>{{ user.credits | number }}</td></tr>
+          {% if user.role !== 'controller' %}
+          <tr><th class="text-muted">Due (₹)</th><td>{{ user.due_amount | number }}</td></tr>
+          {% if user.due_deadline %}
+          <tr><th class="text-muted">Due Deadline</th><td>{{ user.due_deadline | date('datetime') }}</td></tr>
+          {% endif %}
+          {% if user.gift_credits > 0 %}
+          <tr><th class="text-muted">Gift Credits</th><td>{{ user.gift_credits }}</td></tr>
+          {% endif %}
+          {% endif %}
+          <tr><th class="text-muted">Member Since</th><td>{{ user.created_at | date('date') }}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-5">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white py-3">
+        <h5 class="m-0 fw-bold"><i class="fa-solid fa-lock me-2 text-secondary"></i>Change Password</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="/profile/change-password" autocomplete="off">
+          <div class="mb-3">
+            <label class="form-label small">Current Password</label>
+            <input type="password" name="current_password" class="form-control" required/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">New Password <span class="text-muted">(min 6 chars)</span></label>
+            <input type="password" name="new_password" class="form-control" required minlength="6"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Confirm New Password</label>
+            <input type="password" name="confirm_password" class="form-control" required minlength="6"/>
+          </div>
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-key me-1"></i>Change Password
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
