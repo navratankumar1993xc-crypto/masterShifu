@@ -3,10 +3,29 @@
  * Bootstrap / migrate the PostgreSQL schema.
  * Safe to call on every startup — all statements use IF NOT EXISTS / ON CONFLICT DO NOTHING.
  */
-const db = require('./pool');
+const fs   = require('fs');
+const path = require('path');
+const db   = require('./pool');
 
 async function migrate() {
   console.log('[DB] Running migrations…');
+
+  if (db.client === 'sqlite') {
+    db.sqlite.exec(fs.readFileSync(path.join(__dirname, '..', '..', 'database', 'schema.sqlite.sql'), 'utf8'));
+    console.log('[DB] Migrations complete (SQLite).');
+    return;
+  }
+
+  // ── session (connect-pg-simple) ─────────────────────────────────────────────
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS "session" (
+      "sid"    VARCHAR    NOT NULL COLLATE "default",
+      "sess"   JSON       NOT NULL,
+      "expire" TIMESTAMP(6) NOT NULL,
+      CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire")`);
 
   // ── settings ────────────────────────────────────────────────────────────────
   await db.query(`

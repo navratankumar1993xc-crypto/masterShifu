@@ -1,6 +1,12 @@
 'use strict';
-const { Pool } = require('pg');
 const cfg = require('../config');
+
+if (cfg.db.client === 'sqlite') {
+  module.exports = require('./sqlite');
+  return;
+}
+
+const { Pool } = require('pg');
 
 const pool = new Pool({
   host:     cfg.db.host,
@@ -52,4 +58,4 @@ async function getClient() {
   return pool.connect();
 }
 
-module.exports = { query, getClient, pool };
+module.exports = { query, getClient, pool, client: 'pg' };

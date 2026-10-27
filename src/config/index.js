@@ -7,6 +7,8 @@ module.exports = {
   isProduction: process.env.NODE_ENV === 'production',
 
   db: {
+    client: (process.env.DB_CLIENT || 'pg').toLowerCase(),   // 'pg' | 'sqlite'
+    sqliteFile: process.env.SQLITE_FILE || './data/web_ts_panel.sqlite',
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT, 10) || 5432,
     database: process.env.DB_NAME || 'web_ts_panel',

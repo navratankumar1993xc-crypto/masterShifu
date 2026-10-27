@@ -4,10 +4,9 @@ const path     = require('path');
 const express  = require('express');
 const session  = require('express-session');
 const nunjucks = require('nunjucks');
-const pgSession = require('connect-pg-simple')(session);
 
 const cfg     = require('./config');
-const { pool } = require('./db/pool');
+const db      = require('./db/pool');
 const migrate = require('./db/migrate');
 const seedController = require('./helpers/seedController');
 
@@ -86,9 +85,11 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ── Sessions (PostgreSQL store) ──────────────────────────────────────────────
+// ── Sessions (PostgreSQL / SQLite store) ─────────────────────────────────────────────
 app.use(session({
-  store: new pgSession({ pool, tableName: 'session' }),
+  store: db.client === 'sqlite'
+    ? new (require('./db/sqliteSessionStore')(session))(db)
+    : new (require('connect-pg-simple')(session))({ pool: db.pool, tableName: 'session' }),
   secret: cfg.session.secret,
   resave: false,
   saveUninitialized: false,
@@ -143,17 +144,6 @@ app.use((err, req, res, _next) => {
 // ── Bootstrap & Start ─────────────────────────────────────────────────────────
 (async () => {
   try {
-    // Create session table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "session" (
-        "sid"    VARCHAR    NOT NULL COLLATE "default",
-        "sess"   JSON       NOT NULL,
-        "expire" TIMESTAMP(6) NOT NULL,
-        CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
-      )
-    `);
-    await pool.query(`CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire")`);
-
     await migrate();
     await seedController();
 
