@@ -15,6 +15,17 @@ const locals  = require('./middleware/locals');
 
 const app = express();
 
+app.use((req, res, next) => {
+  const isApiSuccessRoute = /^\/api\/(?:success|app\/success\/?)$/.test(req.path);
+
+  if (req.method === 'POST' && isApiSuccessRoute) {
+    req.headers['content-type'] = 'text/plain';
+    return express.text({ type: '*/*' })(req, res, next);
+  }
+
+  next();
+});
+
 // ── View engine: Nunjucks ───────────────────────────────────────────────────
 const nunjucksEnv = nunjucks.configure(path.join(__dirname, '..', 'views'), {
   autoescape: true,

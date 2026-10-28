@@ -12,7 +12,7 @@
       </a>
     </li>
 
-    {% if user.role !== 'seller' %}
+    {% if user and user.role !== 'seller' %}
     <li>
       <a href="/users" class="{{ 'active' if currentPath === '/users' or currentPath === '/users/' }}">
         <i class="fa-solid fa-users"></i> Manage IDs
@@ -20,7 +20,7 @@
     </li>
     {% endif %}
 
-    {% if user.role === 'controller' %}
+    {% if user and user.role === 'controller' %}
     <li>
       <a href="/users/all" class="{{ 'active' if currentPath.startsWith('/users/all') }}">
         <i class="fa-solid fa-address-book"></i> All IDs
@@ -40,7 +40,7 @@
       </a>
     </li>
 
-    {% if user.role !== 'seller' %}
+    {% if user and user.role !== 'seller' %}
     <li>
       <a href="/credits" class="{{ 'active' if currentPath.startsWith('/credits') }}">
         <i class="fa-solid fa-coins"></i> Credits
@@ -48,7 +48,7 @@
     </li>
     {% endif %}
 
-    {% if user.role === 'controller' or user.role === 'developer' %}
+    {% if user and (user.role === 'controller' or user.role === 'developer') %}
     <li>
       <a href="/tickets" class="{{ 'active' if currentPath.startsWith('/tickets') }}">
         <i class="fa-solid fa-ticket"></i> Tickets
@@ -56,7 +56,7 @@
     </li>
     {% endif %}
 
-    {% if user.role === 'controller' %}
+    {% if user and user.role === 'controller' %}
     <li class="sidebar-section">System</li>
     <li>
       <a href="/news/system" class="{{ 'active' if currentPath === '/news/system' }}">
