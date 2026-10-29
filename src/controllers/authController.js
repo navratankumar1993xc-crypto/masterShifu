@@ -1,14 +1,9 @@
 'use strict';
 const bcrypt      = require('bcrypt');
-const db          = require('../db/pool');
 const User        = require('../models/User');
 const Transaction = require('../models/Transaction');
 const Setting     = require('../models/Setting');
 const Key         = require('../models/Key');
-
-// One public demo key per IP per window (in-memory; resets on restart)
-const DEMO_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const demoByIp = new Map();
 
 async function renderLogin(res, extra = {}) {
   const [downloadUrl, demoEnabled] = await Promise.all([
@@ -37,23 +32,13 @@ exports.postDemo = async (req, res) => {
       return renderLogin(res, { error: 'Demo key creation is currently disabled.' });
     }
 
-    const ip   = req.ip;
-    const now  = Date.now();
-    const prev = demoByIp.get(ip);
-    if (prev && now - prev.at < DEMO_COOLDOWN_MS) {
-      return renderLogin(res, { demoKey: prev.key, demoExpiry: prev.expiry, demoRepeat: true });
-    }
-
     const controller = await User.getControllerUser();
     if (!controller) {
       return renderLogin(res, { error: 'Demo key creation is unavailable right now.' });
     }
 
     // Next free DEMO{N}
-    const r = await db.query(`SELECT COUNT(*) AS cnt FROM keys WHERE key_value LIKE 'DEMO%'`);
-    let n = parseInt(r.rows[0].cnt, 10);
-    let keyValue;
-    do { keyValue = `DEMO${++n}`; } while (await Key.valueExists(keyValue));
+    const keyValue = await Key.nextDemoValue();
 
     const expiryDate = Key.newExpiryDate(2);
     await Key.create({
@@ -64,7 +49,6 @@ exports.postDemo = async (req, res) => {
       status:         'active',
     });
 
-    demoByIp.set(ip, { at: now, key: keyValue, expiry: expiryDate });
     renderLogin(res, { demoKey: keyValue, demoExpiry: expiryDate });
   } catch (err) {
     console.error('[authController.postDemo]', err);

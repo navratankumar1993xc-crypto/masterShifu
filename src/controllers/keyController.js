@@ -356,11 +356,7 @@ exports.createDemo = async (req, res, next) => {
 
   try {
     // Generate demo{N} style key
-    const r = await db.query(
-      `SELECT COUNT(*) AS cnt FROM keys WHERE key_value LIKE 'DEMO%'`
-    );
-    const n        = parseInt(r.rows[0].cnt, 10) + 1;
-    const keyValue = `DEMO${n}`;
+    const keyValue = await Key.nextDemoValue();
 
     // Demo keys expire in 2 days
     const expiryDate = Key.newExpiryDate(2);

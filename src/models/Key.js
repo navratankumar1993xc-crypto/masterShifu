@@ -24,6 +24,19 @@ const Key = {
     return r.rows.length > 0;
   },
 
+  /** Next free DEMO{N} — based on highest existing number, not COUNT (deleted keys leave gaps) */
+  async nextDemoValue() {
+    const r = await db.query(`SELECT key_value FROM keys WHERE UPPER(key_value) LIKE 'DEMO%'`);
+    let max = 0;
+    for (const row of r.rows) {
+      const m = /^DEMO(\d+)$/i.exec(row.key_value);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+    let n = max + 1;
+    while (await Key.valueExists(`DEMO${n}`)) n++;
+    return `DEMO${n}`;
+  },
+
   async create({ key_value, created_by, expiry_date, payment_status = 'unpaid', status = 'active' }, client) {
     const q = client || db;
     const r = await q.query(
