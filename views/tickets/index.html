@@ -21,6 +21,7 @@
     .ticket-body .route { font-weight:700; color:#34d399; font-size:1rem; margin-bottom:6px; }
     .ticket-meta { color:#94a3b8; }
     .badge-pnr { background:#1d4ed8; color:#fff; padding:2px 8px; border-radius:4px; font-weight:700; }
+    .badge-avl { background:#065f46; color:#d1fae5; padding:2px 8px; border-radius:4px; font-weight:600; margin-left:4px; }
     .no-tickets { text-align:center; padding:60px; color:#475569; }
   </style>
 </head>
@@ -54,20 +55,26 @@
   <div class="ticket-grid">
     {% for t in tickets %}
     <div class="ticket-card">
-      {% if t.img_base64 %}
-      <img src="data:image/png;base64,{{ t.img_base64 }}" alt="Ticket {{ t.pnr }}"
-           loading="lazy"/>
+      {% if t.has_img == 1 %}
+      <a href="/tickets/image/{{ t.id }}" target="_blank" rel="noopener">
+        <img src="/tickets/image/{{ t.id }}" alt="Ticket {{ t.pnr }}" loading="lazy"/>
+      </a>
       {% endif %}
       <div class="ticket-body">
-        <div class="route">{{ t.src_dest or '?' }}</div>
+        <div class="route">
+          {% if t.from_stn and t.to_stn %}{{ t.from_stn }} → {{ t.to_stn }}{% else %}{{ t.src_dest or '?' }}{% endif %}
+        </div>
         <div class="mb-1">
           <span class="badge-pnr">{{ t.pnr or 'No PNR' }}</span>
+          {% if t.seat_avl %}<span class="badge-avl">{{ t.seat_avl }}</span>{% endif %}
         </div>
         <div class="ticket-meta">
-          <div>Train: {{ t.train_no or '—' }} | Pay: {{ t.pay_mode or '—' }}</div>
+          {% if t.src_dest and t.from_stn %}<div>{{ t.src_dest }}</div>{% endif %}
+          <div>Train: {{ t.train_no or '—' }}</div>
+          <div>Payment: {{ t.pay_mode or '—' }} | Gateway: {{ t.gateway or '—' }}</div>
           <div>Key: {{ t.license_key or '—' }}</div>
-          <div>IP: {{ t.ip_address or '—' }}</div>
-          <div>Time: {{ t.created_at | date('datetime') }}</div>
+          <div>Home IP: {{ t.home_ip or t.ip_address or '—' }}</div>
+          <div>Booked: {{ t.booking_time or (t.created_at | date('datetime')) }}</div>
         </div>
       </div>
     </div>

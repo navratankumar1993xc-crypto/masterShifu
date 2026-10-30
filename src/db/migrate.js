@@ -13,6 +13,7 @@ async function migrate() {
   if (db.client === 'sqlite') {
     db.sqlite.exec(fs.readFileSync(path.join(__dirname, '..', '..', 'database', 'schema.sqlite.sql'), 'utf8'));
     await usernameColumn();
+    await ticketColumns();
     console.log('[DB] Migrations complete (SQLite).');
     return;
   }
@@ -215,8 +216,32 @@ async function migrate() {
 
   // ── Username (email se alag) — username ya email dono se login ────────────────
   await usernameColumn();
+  await ticketColumns();
 
   console.log('[DB] Migrations complete.');
+}
+
+/** Booking upload ke extra fields (desktop app PNR ke baad bhejta hai). */
+const TICKET_EXTRA_COLUMNS = {
+  from_stn:     'VARCHAR(20)  DEFAULT NULL',
+  to_stn:       'VARCHAR(20)  DEFAULT NULL',
+  gateway:      'VARCHAR(100) DEFAULT NULL',
+  seat_avl:     'VARCHAR(50)  DEFAULT NULL',
+  home_ip:      'VARCHAR(50)  DEFAULT NULL',
+  booking_time: 'VARCHAR(30)  DEFAULT NULL',
+};
+
+async function ticketColumns() {
+  if (db.client === 'sqlite') {
+    const cols = db.sqlite.prepare(`PRAGMA table_info(tickets)`).all().map(c => c.name);
+    for (const [name, def] of Object.entries(TICKET_EXTRA_COLUMNS)) {
+      if (!cols.includes(name)) db.sqlite.exec(`ALTER TABLE tickets ADD COLUMN ${name} ${def}`);
+    }
+  } else {
+    for (const [name, def] of Object.entries(TICKET_EXTRA_COLUMNS)) {
+      await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ${name} ${def}`);
+    }
+  }
 }
 
 /**

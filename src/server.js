@@ -20,7 +20,7 @@ app.use((req, res, next) => {
 
   if (req.method === 'POST' && isApiSuccessRoute) {
     req.headers['content-type'] = 'text/plain';
-    return express.text({ type: '*/*' })(req, res, next);
+    return express.text({ type: '*/*', limit: '10mb' })(req, res, next);
   }
 
   next();
@@ -88,6 +88,7 @@ nunjucksEnv.addFilter('truncate', (str, len, killwords, end) => {
 });
 
 app.set('view engine', 'html');
+app.set('trust proxy', 1); // nginx/tunnel ke peeche asli client IP
 
 // ── Static files ─────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, '..', 'public')));

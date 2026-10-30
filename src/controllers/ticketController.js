@@ -1,9 +1,32 @@
 'use strict';
+const fs     = require('fs');
+const path   = require('path');
 const Ticket = require('../models/Ticket');
+
+// Screenshots disk par date-wise: data/tickets/YYYY-MM-DD/<file>.png
+const TICKET_IMG_DIR = path.join(__dirname, '..', '..', 'data', 'tickets');
+
+function localDate(d = new Date()) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function saveTicketImage(base64, date, tag) {
+  const data = String(base64).replace(/^data:image\/\w+;base64,/, '');
+  const buf  = Buffer.from(data, 'base64');
+  if (!buf.length) return null;
+  const day  = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : localDate();
+  const dir  = path.join(TICKET_IMG_DIR, day);
+  fs.mkdirSync(dir, { recursive: true });
+  const safeTag = String(tag || 'ticket').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) || 'ticket';
+  const file = `${Date.now()}_${safeTag}.png`;
+  fs.writeFileSync(path.join(dir, file), buf);
+  return `${day}/${file}`;
+}
 
 exports.index = async (req, res, next) => {
   try {
-    const date        = req.query.date || new Date().toISOString().split('T')[0];
+    const date        = req.query.date || localDate();
     const licenseKey  = (req.query.license || '').trim();
     const tickets     = await Ticket.find({ date, licenseKey });
 
@@ -24,6 +47,13 @@ exports.apiUpload = async (req, res) => {
     if (typeof body === 'string') {
       const trimmed = body.trim();
       if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+          body = JSON.parse(trimmed);
+        } catch (_) {
+          body = null;
+        }
+      }
+      if (body === null) {
         try {
           body = JSON.parse(trimmed.replace(/([{,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":'));
         } catch (_) {
@@ -48,20 +78,40 @@ exports.apiUpload = async (req, res) => {
     }
 
     const payload = {
-      src_dest:    body.src_dest || body.src || body.from_to || body.route || null,
-      train_no:    body.train_no || body.train || body.trainNumber || null,
-      pay_mode:    body.pay_mode || body.payment_mode || body.paymentMethod || null,
-      mac_id:      body.mac_id || body.machine_id || body.mac || null,
-      user_id:     body.user_id || body.userId || body.userid || null,
-      t_date:      body.t_date || body.date || new Date().toISOString().split('T')[0],
-      pnr:         body.pnr || body.pnrNo || body.pnr_number || null,
-      img_base64:  body.img_base64 || body.image_base64 || body.image || body.ticket_image || null,
+      src_dest:    body.src_dest || body.Src_Dest || body.src || body.from_to || body.route || null,
+      train_no:    body.train_no || body.TrainNo || body.train || body.trainNumber || null,
+      pay_mode:    body.pay_mode || body.Payment || body.payment_mode || body.paymentMethod || null,
+      gateway:     body.gateway || body.Gateway || null,
+      from_stn:    body.from_stn || body.From || null,
+      to_stn:      body.to_stn || body.To || null,
+      seat_avl:    body.seat_avl || body.SeatAvl || null,
+      home_ip:     body.home_ip || body.HomeIP || null,
+      booking_time: body.booking_time || body.BookingTime || null,
+      mac_id:      body.mac_id || body.MachineID || body.machine_id || body.mac || null,
+      user_id:     body.user_id || body.UserID || body.userId || body.userid || null,
+      t_date:      body.t_date || body.date || localDate(),
+      pnr:         body.pnr || body.PNR || body.pnrNo || body.pnr_number || null,
+      img_base64:  body.img_base64 || body.base64image || body.image_base64 || body.image || body.ticket_image || null,
       img_path:    body.img_path || body.image_path || null,
-      license_key: body.license_key || body.license || body.licenseKey || null,
+      license_key: body.license_key || body.license || body.licenseKey || body.UserID || null,
     };
 
     if (!payload.img_base64 && body.img && typeof body.img === 'string') {
       payload.img_base64 = body.img;
+    }
+    if (payload.license_key) payload.license_key = String(payload.license_key).trim().toUpperCase();
+
+    // Image DB me nahi — file date-wise folder me, DB me sirf path
+    if (payload.img_base64) {
+      try {
+        const rel = saveTicketImage(payload.img_base64, payload.t_date, payload.pnr || body.Mode || 'ticket');
+        if (rel) {
+          payload.img_path   = rel;
+          payload.img_base64 = null;
+        }
+      } catch (e) {
+        console.error('[ticketController.apiUpload] image save failed', e.message);
+      }
     }
 
     const id = await Ticket.create({
@@ -79,14 +129,23 @@ exports.apiUpload = async (req, res) => {
 exports.imageServe = async (req, res, next) => {
   try {
     const ticket = await Ticket.findById(parseInt(req.params.id, 10));
-    if (!ticket || !ticket.img_base64) return res.status(404).send('Not found');
+    if (!ticket) return res.status(404).send('Not found');
+
+    if (req.query.download !== undefined) {
+      res.setHeader('Content-Disposition', `attachment; filename="ticket_${ticket.id}.png"`);
+    }
+
+    if (ticket.img_path) {
+      const file = path.resolve(TICKET_IMG_DIR, ticket.img_path);
+      if (file.startsWith(TICKET_IMG_DIR + path.sep) && fs.existsSync(file)) {
+        return res.type('png').sendFile(file);
+      }
+    }
+    if (!ticket.img_base64) return res.status(404).send('Not found');
 
     const data = ticket.img_base64.replace(/^data:image\/\w+;base64,/, '');
     const buf  = Buffer.from(data, 'base64');
     res.setHeader('Content-Type', 'image/png');
-    if (req.query.download !== undefined) {
-      res.setHeader('Content-Disposition', `attachment; filename="ticket_${ticket.id}.png"`);
-    }
     res.send(buf);
   } catch (err) { next(err); }
 };
