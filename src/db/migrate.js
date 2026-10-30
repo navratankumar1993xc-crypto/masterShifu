@@ -12,6 +12,7 @@ async function migrate() {
 
   if (db.client === 'sqlite') {
     db.sqlite.exec(fs.readFileSync(path.join(__dirname, '..', '..', 'database', 'schema.sqlite.sql'), 'utf8'));
+    await uniqueUsernameIndex(`CASE WHEN instr(email, '@') > 0 THEN substr(email, 1, instr(email, '@') - 1) ELSE email END`);
     console.log('[DB] Migrations complete (SQLite).');
     return;
   }
@@ -212,7 +213,30 @@ async function migrate() {
     ON CONFLICT (setting_key) DO NOTHING
   `);
 
+  // ── Username (email ka @ se pehle wala part) unique — username se login ke liye ─
+  await uniqueUsernameIndex(`split_part(email, '@', 1)`);
+
   console.log('[DB] Migrations complete.');
+}
+
+/**
+ * Unique index on the username part of email. If existing rows already clash,
+ * skip (don't block startup) and list them so they can be renamed first.
+ */
+async function uniqueUsernameIndex(usernameExpr) {
+  const dup = await db.query(`
+    SELECT ${usernameExpr} AS username, COUNT(*) AS cnt
+    FROM users GROUP BY ${usernameExpr} HAVING COUNT(*) > 1
+  `);
+  if (dup.rows.length) {
+    console.warn('[DB] Skipped unique username index — duplicate usernames exist:');
+    for (const d of dup.rows) {
+      const r = await db.query(`SELECT id, email FROM users WHERE ${usernameExpr} = $1 ORDER BY id`, [d.username]);
+      console.warn(`       ${d.username}: ${r.rows.map(u => `#${u.id} ${u.email}`).join(', ')}`);
+    }
+    return;
+  }
+  await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username ON users ((${usernameExpr}))`);
 }
 
 module.exports = migrate;

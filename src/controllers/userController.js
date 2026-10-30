@@ -6,6 +6,11 @@ const Key         = require('../models/Key');
 const Transaction = require('../models/Transaction');
 const cfg         = require('../config');
 
+/** Duplicate email/username hit the DB unique index (Postgres 23505 / SQLite UNIQUE) */
+function isUniqueViolation(err) {
+  return err.code === '23505' || /UNIQUE constraint failed/i.test(err.message || '');
+}
+
 /** Roles this user may create: every role below it in the hierarchy */
 function creatableRoles(role) {
   const i = cfg.roleOrder.indexOf(role);
@@ -101,6 +106,7 @@ exports.create = async (req, res, next) => {
     req.flash('success', `${User.roleLabel(targetRole)} account created. Login: ${email} / ${password}`);
   } catch (err) {
     await client.query('ROLLBACK');
+    if (isUniqueViolation(err)) { req.flash('error', 'User ID is already in use.'); return res.redirect('/users'); }
     return next(err);
   } finally {
     client.release();
@@ -211,6 +217,7 @@ exports.edit = async (req, res, next) => {
     req.flash('success', 'Account updated successfully.');
   } catch (err) {
     await client.query('ROLLBACK');
+    if (isUniqueViolation(err)) { req.flash('error', 'User ID already in use by another account.'); return res.redirect('/users'); }
     return next(err);
   } finally {
     client.release();

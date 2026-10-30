@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS users (
   cascade_from      INTEGER       DEFAULT NULL,      -- branch deactivation source
   UNIQUE (email)
 );
+-- username (email ka @ se pehle wala part) bhi unique — username se login ke liye
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username ON users ((split_part(email, '@', 1)));
 
 -- ── keys ────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS keys (

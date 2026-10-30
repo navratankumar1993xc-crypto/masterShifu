@@ -64,7 +64,7 @@ exports.postLogin = async (req, res) => {
   }
 
   try {
-    const user = await User.findByEmail(email.trim().toLowerCase());
+    const user = await User.findByLogin(email.trim().toLowerCase());
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return renderLogin(res, { error: 'Invalid credentials.' });
     }

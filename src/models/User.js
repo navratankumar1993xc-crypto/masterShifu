@@ -4,6 +4,9 @@ const cfg  = require('../config');
 
 const COLS = 'id, name, email, role, parent_id, status, credits, due_amount, due_deadline, gift_credits, gift_pay_progress, created_at';
 
+// "rahul" -> "rahul@%" (LIKE wildcards % _ \ escape kiye hue)
+const usernameLike = (u) => u.replace(/[\\%_]/g, '\\$&') + '@%';
+
 const User = {
   async findById(id) {
     const r = await db.query(`SELECT ${COLS} FROM users WHERE id = $1`, [id]);
@@ -20,12 +23,28 @@ const User = {
     return r.rows[0] || null;
   },
 
+  // Login: full email, ya sirf username (email ka @ se pehle wala part)
+  async findByLogin(login) {
+    const exact = await this.findByEmail(login);
+    if (exact || login.includes('@')) return exact;
+
+    const def = await this.findByEmail(`${login}@webts.com`);
+    if (def) return def;
+
+    const r = await db.query(
+      `SELECT ${COLS}, password FROM users WHERE email = $1 OR email LIKE $2 ESCAPE '\\' LIMIT 2`,
+      [login, usernameLike(login)]
+    );
+    return r.rows.length === 1 ? r.rows[0] : null;
+  },
+
+  // Duplicate check: same email, ya same username (@ se pehle wala part) kisi bhi domain pe
   async emailExists(email, excludeId = null) {
-    if (excludeId) {
-      const r = await db.query('SELECT 1 FROM users WHERE email = $1 AND id != $2 LIMIT 1', [email, excludeId]);
-      return r.rows.length > 0;
-    }
-    const r = await db.query('SELECT 1 FROM users WHERE email = $1 LIMIT 1', [email]);
+    const username = email.split('@')[0];
+    const params = [username, usernameLike(username)];
+    let sql = `SELECT 1 FROM users WHERE (email = $1 OR email LIKE $2 ESCAPE '\\')`;
+    if (excludeId) { sql += ' AND id != $3'; params.push(excludeId); }
+    const r = await db.query(sql + ' LIMIT 1', params);
     return r.rows.length > 0;
   },
 
