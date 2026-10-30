@@ -31,6 +31,7 @@ exports.index = async (req, res, next) => {
     if (search) {
       children = children.filter(c =>
         (c.email || '').toLowerCase().includes(search) ||
+        (c.username || '').toLowerCase().includes(search) ||
         (c.name || '').toLowerCase().includes(search));
     }
     children.sort((a, b) => User.roleSortOrder(a.role) - User.roleSortOrder(b.role));
@@ -55,11 +56,17 @@ exports.create = async (req, res, next) => {
     return res.redirect('/users');
   }
 
-  const { email, password, credits } = req.body;
+  const { password, credits } = req.body;
+  const username   = (req.body.username || '').trim().toLowerCase();
+  const email      = (req.body.email || '').trim().toLowerCase();
   const creditsNum = parseInt(credits, 10) || 0;
 
-  if (!email || !password || password.length < 6) {
-    req.flash('error', !email || !password ? 'All fields are required.' : 'Password must be at least 6 characters.');
+  const invalid = !username || !email || !password ? 'All fields are required.'
+    : !User.USERNAME_RE.test(username) ? 'Username must be 3-30 characters: letters, numbers, . _ -'
+    : password.length < 6 ? 'Password must be at least 6 characters.'
+    : null;
+  if (invalid) {
+    req.flash('error', invalid);
     return res.redirect('/users');
   }
 
@@ -67,8 +74,11 @@ exports.create = async (req, res, next) => {
   try {
     await client.query('BEGIN');
 
-    if (await User.emailExists(email.trim().toLowerCase())) {
-      req.flash('error', 'User ID is already in use.');
+    const taken = await User.usernameExists(username) ? 'Username is already in use.'
+      : await User.emailExists(email) ? 'Email is already in use.'
+      : null;
+    if (taken) {
+      req.flash('error', taken);
       await client.query('ROLLBACK');
       return res.redirect('/users');
     }
@@ -84,10 +94,10 @@ exports.create = async (req, res, next) => {
       await client.query('UPDATE users SET credits = credits - $1 WHERE id = $2', [creditsNum, user.id]);
     }
 
-    const name   = email.split('@')[0].replace(/^./, c => c.toUpperCase());
+    const name   = username.replace(/^./, c => c.toUpperCase());
     const hashed = await bcrypt.hash(password, 12);
     const newId  = await User.create({
-      name, email: email.trim().toLowerCase(), password: hashed,
+      name, username, email, password: hashed,
       role: targetRole, parent_id: user.id, credits: creditsNum,
     }, client);
 
@@ -103,10 +113,10 @@ exports.create = async (req, res, next) => {
     }
 
     await client.query('COMMIT');
-    req.flash('success', `${User.roleLabel(targetRole)} account created. Login: ${email} / ${password}`);
+    req.flash('success', `${User.roleLabel(targetRole)} account created. Login: ${username} (or ${email}) / ${password}`);
   } catch (err) {
     await client.query('ROLLBACK');
-    if (isUniqueViolation(err)) { req.flash('error', 'User ID is already in use.'); return res.redirect('/users'); }
+    if (isUniqueViolation(err)) { req.flash('error', 'Username or email is already in use.'); return res.redirect('/users'); }
     return next(err);
   } finally {
     client.release();
@@ -153,11 +163,17 @@ exports.toggleStatus = async (req, res, next) => {
 exports.edit = async (req, res, next) => {
   const user       = req.user;
   const targetId   = parseInt(req.body.user_id, 10);
-  const { name, email, password, credits } = req.body;
+  const { name, password, credits } = req.body;
+  const username   = (req.body.username || '').trim().toLowerCase();
+  const email      = (req.body.email || '').trim().toLowerCase();
   const newCredits = parseInt(credits, 10) || 0;
 
-  if (!name || !email) {
-    req.flash('error', 'Name and User ID are required.');
+  if (!name || !username || !email) {
+    req.flash('error', 'Name, username and email are required.');
+    return res.redirect('/users');
+  }
+  if (!User.USERNAME_RE.test(username)) {
+    req.flash('error', 'Username must be 3-30 characters: letters, numbers, . _ -');
     return res.redirect('/users');
   }
 
@@ -174,8 +190,11 @@ exports.edit = async (req, res, next) => {
       return res.redirect('/users');
     }
 
-    if (await User.emailExists(email.trim().toLowerCase(), targetId)) {
-      req.flash('error', 'User ID already in use by another account.');
+    const taken = await User.usernameExists(username, targetId) ? 'Username already in use by another account.'
+      : await User.emailExists(email, targetId) ? 'Email already in use by another account.'
+      : null;
+    if (taken) {
+      req.flash('error', taken);
       await client.query('ROLLBACK');
       return res.redirect('/users');
     }
@@ -194,7 +213,7 @@ exports.edit = async (req, res, next) => {
       await client.query('UPDATE users SET credits = credits - $1 WHERE id = $2', [diff, user.id]);
     }
 
-    const updates = { name, email: email.trim().toLowerCase(), credits: newCredits };
+    const updates = { name, username, email, credits: newCredits };
     // Password reset of an ID: controller only
     if (user.role === 'controller' && password && password.length >= 6) {
       updates.password = await bcrypt.hash(password, 12);
@@ -217,7 +236,7 @@ exports.edit = async (req, res, next) => {
     req.flash('success', 'Account updated successfully.');
   } catch (err) {
     await client.query('ROLLBACK');
-    if (isUniqueViolation(err)) { req.flash('error', 'User ID already in use by another account.'); return res.redirect('/users'); }
+    if (isUniqueViolation(err)) { req.flash('error', 'Username or email already in use by another account.'); return res.redirect('/users'); }
     return next(err);
   } finally {
     client.release();
@@ -234,6 +253,7 @@ exports.all = async (req, res, next) => {
     if (search) {
       users = users.filter(u =>
         (u.email || '').toLowerCase().includes(search) ||
+        (u.username || '').toLowerCase().includes(search) ||
         (u.name || '').toLowerCase().includes(search));
     }
     if (roleFilter) users = users.filter(u => u.role === roleFilter);

@@ -2,12 +2,12 @@
 const db   = require('../db/pool');
 const cfg  = require('../config');
 
-const COLS = 'id, name, email, role, parent_id, status, credits, due_amount, due_deadline, gift_credits, gift_pay_progress, created_at';
-
-// "rahul" -> "rahul@%" (LIKE wildcards % _ \ escape kiye hue)
-const usernameLike = (u) => u.replace(/[\\%_]/g, '\\$&') + '@%';
+const COLS = 'id, name, username, email, role, parent_id, status, credits, due_amount, due_deadline, gift_credits, gift_pay_progress, created_at';
 
 const User = {
+  // Username: 3-30 chars, a-z 0-9 . _ - (no @, taaki email se kabhi clash na ho)
+  USERNAME_RE: /^[a-z0-9._-]{3,30}$/,
+
   async findById(id) {
     const r = await db.query(`SELECT ${COLS} FROM users WHERE id = $1`, [id]);
     return r.rows[0] || null;
@@ -23,38 +23,36 @@ const User = {
     return r.rows[0] || null;
   },
 
-  // Login: full email, ya sirf username (email ka @ se pehle wala part)
+  // Login: email (@ wala) ya username
   async findByLogin(login) {
-    const exact = await this.findByEmail(login);
-    if (exact || login.includes('@')) return exact;
-
-    const def = await this.findByEmail(`${login}@webts.com`);
-    if (def) return def;
-
-    const r = await db.query(
-      `SELECT ${COLS}, password FROM users WHERE email = $1 OR email LIKE $2 ESCAPE '\\' LIMIT 2`,
-      [login, usernameLike(login)]
-    );
-    return r.rows.length === 1 ? r.rows[0] : null;
+    const col = login.includes('@') ? 'email' : 'username';
+    const r = await db.query(`SELECT ${COLS}, password FROM users WHERE ${col} = $1`, [login]);
+    return r.rows[0] || null;
   },
 
-  // Duplicate check: same email, ya same username (@ se pehle wala part) kisi bhi domain pe
   async emailExists(email, excludeId = null) {
-    const username = email.split('@')[0];
-    const params = [username, usernameLike(username)];
-    let sql = `SELECT 1 FROM users WHERE (email = $1 OR email LIKE $2 ESCAPE '\\')`;
-    if (excludeId) { sql += ' AND id != $3'; params.push(excludeId); }
+    return this._exists('email', email, excludeId);
+  },
+
+  async usernameExists(username, excludeId = null) {
+    return this._exists('username', username, excludeId);
+  },
+
+  async _exists(col, value, excludeId) {
+    const params = [value];
+    let sql = `SELECT 1 FROM users WHERE ${col} = $1`;
+    if (excludeId) { sql += ' AND id != $2'; params.push(excludeId); }
     const r = await db.query(sql + ' LIMIT 1', params);
     return r.rows.length > 0;
   },
 
-  async create({ name, email, password, role, parent_id, credits = 0 }, client) {
+  async create({ name, username, email, password, role, parent_id, credits = 0 }, client) {
     const q = client || db;
     const r = await q.query(
-      `INSERT INTO users (name, email, password, role, parent_id, credits)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO users (name, username, email, password, role, parent_id, credits)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
-      [name, email, password, role, parent_id || null, credits]
+      [name, username, email, password, role, parent_id || null, credits]
     );
     return r.rows[0].id;
   },
@@ -155,7 +153,7 @@ const User = {
   /** Every account (controller view), with parent email */
   async findAll() {
     const r = await db.query(`
-      SELECT u.id, u.name, u.email, u.role, u.status, u.credits, u.due_amount, u.due_deadline, u.created_at,
+      SELECT u.id, u.name, u.username, u.email, u.role, u.status, u.credits, u.due_amount, u.due_deadline, u.created_at,
              p.email AS parent_email
       FROM users u LEFT JOIN users p ON p.id = u.parent_id
       ORDER BY u.created_at DESC

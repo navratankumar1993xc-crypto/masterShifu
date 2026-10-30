@@ -12,7 +12,7 @@ async function migrate() {
 
   if (db.client === 'sqlite') {
     db.sqlite.exec(fs.readFileSync(path.join(__dirname, '..', '..', 'database', 'schema.sqlite.sql'), 'utf8'));
-    await uniqueUsernameIndex(`CASE WHEN instr(email, '@') > 0 THEN substr(email, 1, instr(email, '@') - 1) ELSE email END`);
+    await usernameColumn();
     console.log('[DB] Migrations complete (SQLite).');
     return;
   }
@@ -213,30 +213,45 @@ async function migrate() {
     ON CONFLICT (setting_key) DO NOTHING
   `);
 
-  // ── Username (email ka @ se pehle wala part) unique — username se login ke liye ─
-  await uniqueUsernameIndex(`split_part(email, '@', 1)`);
+  // ── Username (email se alag) — username ya email dono se login ────────────────
+  await usernameColumn();
 
   console.log('[DB] Migrations complete.');
 }
 
 /**
- * Unique index on the username part of email. If existing rows already clash,
- * skip (don't block startup) and list them so they can be renamed first.
+ * Separate, unique username column. Old rows get the part of their email
+ * before @; if several share it (rani@dev, rani@master) each also gets its
+ * domain name (ranidev, ranimaster). Still taken → id appended.
  */
-async function uniqueUsernameIndex(usernameExpr) {
-  const dup = await db.query(`
-    SELECT ${usernameExpr} AS username, COUNT(*) AS cnt
-    FROM users GROUP BY ${usernameExpr} HAVING COUNT(*) > 1
-  `);
-  if (dup.rows.length) {
-    console.warn('[DB] Skipped unique username index — duplicate usernames exist:');
-    for (const d of dup.rows) {
-      const r = await db.query(`SELECT id, email FROM users WHERE ${usernameExpr} = $1 ORDER BY id`, [d.username]);
-      console.warn(`       ${d.username}: ${r.rows.map(u => `#${u.id} ${u.email}`).join(', ')}`);
+async function usernameColumn() {
+  if (db.client === 'sqlite') {
+    const cols = db.sqlite.prepare(`PRAGMA table_info(users)`).all();
+    if (!cols.some(c => c.name === 'username')) {
+      db.sqlite.exec(`ALTER TABLE users ADD COLUMN username VARCHAR(50) DEFAULT NULL`);
     }
-    return;
+  } else {
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50) DEFAULT NULL`);
   }
-  await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username ON users ((${usernameExpr}))`);
+  // Purana index (email ke @ se pehle wale part pe) ab nahi chahiye
+  await db.query(`DROP INDEX IF EXISTS uq_users_username`);
+
+  const r = await db.query(`SELECT id, email FROM users WHERE username IS NULL ORDER BY id`);
+  const count = {};
+  for (const u of r.rows) {
+    const local = u.email.split('@')[0].toLowerCase();
+    count[local] = (count[local] || 0) + 1;
+  }
+  for (const u of r.rows) {
+    const [local, domain = ''] = u.email.toLowerCase().split('@');
+    let username = count[local] > 1 ? local + domain.split('.')[0] : local;
+    const taken = await db.query(`SELECT 1 FROM users WHERE username = $1`, [username]);
+    if (taken.rows.length) username += u.id;
+    await db.query(`UPDATE users SET username = $1 WHERE id = $2`, [username, u.id]);
+  }
+  if (r.rows.length) console.log(`[DB] Username set for ${r.rows.length} existing account(s).`);
+
+  await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_col ON users (username)`);
 }
 
 module.exports = migrate;

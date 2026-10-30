@@ -47,8 +47,8 @@
           {% for u in users %}
           <tr>
             <td>
-              <div class="fw-semibold">{{ u.email }}</div>
-              <small class="text-muted">{{ u.name }}</small>
+              <div class="fw-semibold">{{ u.username }}</div>
+              <small class="text-muted">{{ u.email }}</small>
             </td>
             <td><span class="badge bg-dark">{{ u.role | roleName }}</span></td>
             <td class="small">{{ u.parent_email or '—' }}</td>

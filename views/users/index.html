@@ -44,8 +44,8 @@
           {% for c in children %}
           <tr>
             <td>
-              <div class="fw-semibold">{{ c.email }}</div>
-              <small class="text-muted">{{ c.name }}</small>
+              <div class="fw-semibold">{{ c.username }}</div>
+              <small class="text-muted">{{ c.email }}</small>
             </td>
             <td><span class="badge bg-dark">{{ c.role | roleName }}</span></td>
             <td class="small">{{ 'You' if c.parent_id === user.id else c.parent_email }}</td>
@@ -138,7 +138,12 @@
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label">User ID (Email)</label>
+            <label class="form-label">Username <small class="text-muted">(3-30 chars: a-z 0-9 . _ -)</small></label>
+            <input type="text" name="username" class="form-control" required placeholder="seller01"
+                   pattern="[A-Za-z0-9._\-]{3,30}" autocapitalize="none"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
             <input type="email" name="email" class="form-control" required placeholder="seller@example.com"/>
           </div>
           <div class="mb-3">
@@ -178,7 +183,12 @@
             <input type="text" name="name" class="form-control" value="{{ c.name }}" required/>
           </div>
           <div class="mb-3">
-            <label class="form-label">User ID (Email)</label>
+            <label class="form-label">Username</label>
+            <input type="text" name="username" class="form-control" value="{{ c.username }}" required
+                   pattern="[A-Za-z0-9._\-]{3,30}" autocapitalize="none"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
             <input type="email" name="email" class="form-control" value="{{ c.email }}" required/>
           </div>
           {% if user.role === 'controller' %}

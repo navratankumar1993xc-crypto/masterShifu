@@ -41,6 +41,7 @@ ON CONFLICT (setting_key) DO NOTHING;
 CREATE TABLE IF NOT EXISTS users (
   id                SERIAL PRIMARY KEY,
   name              VARCHAR(100)  NOT NULL DEFAULT '',
+  username          VARCHAR(50)   DEFAULT NULL,      -- login: username ya email
   email             VARCHAR(191)  NOT NULL,
   password          VARCHAR(255)  NOT NULL,
   role              VARCHAR(30)   NOT NULL DEFAULT 'seller'
@@ -58,8 +59,7 @@ CREATE TABLE IF NOT EXISTS users (
   cascade_from      INTEGER       DEFAULT NULL,      -- branch deactivation source
   UNIQUE (email)
 );
--- username (email ka @ se pehle wala part) bhi unique — username se login ke liye
-CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username ON users ((split_part(email, '@', 1)));
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_col ON users (username);
 
 -- ── keys ────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS keys (
@@ -174,8 +174,8 @@ CREATE INDEX IF NOT EXISTS idx_transfers_created ON transfers(created_at);
 -- ── default controller: admin@webts.com / admin123 (CHANGE AFTER FIRST LOGIN) ──
 -- bcrypt hash via pgcrypto; node's bcrypt.compare accepts the $2a$ prefix.
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-INSERT INTO users (name, email, password, role, status, credits)
-SELECT 'Admin', 'admin@webts.com', crypt('admin123', gen_salt('bf', 12)), 'controller', 'active', 9999
+INSERT INTO users (name, username, email, password, role, status, credits)
+SELECT 'Admin', 'admin', 'admin@webts.com', crypt('admin123', gen_salt('bf', 12)), 'controller', 'active', 9999
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE role = 'controller');
 
 COMMIT;
