@@ -85,6 +85,11 @@
             <td>
               {% if k.status === 'active' %}
                 <span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Active</span>
+                {% if k.force_active == 1 %}
+                <span class="badge bg-info text-dark ms-1" title="Controller / Developer ne bina payment ke activate kiya">
+                  <i class="fa-solid fa-bolt me-1"></i>Force
+                </span>
+                {% endif %}
               {% elif k.status === 'expired' %}
                 <span class="badge bg-danger"><i class="fa-solid fa-clock me-1"></i>Expired</span>
               {% else %}
@@ -178,12 +183,14 @@
                 {% endif %}
 
                 {# ── Toggle Active / Inactive ── #}
-                {% if k.status !== 'expired' %}
+                {% set canForce = user.role === 'controller' or user.role === 'developer' %}
+                {% if k.status === 'active' or (k.status === 'inactive' and (canForce or k.due_lock != 1)) %}
                 <form method="POST" action="/keys/toggle-status">
                   <input type="hidden" name="id" value="{{ k.id }}"/>
                   <input type="hidden" name="status" value="{{ 'inactive' if k.status === 'active' else 'active' }}"/>
                   <button class="btn {{ 'btn-outline-secondary' if k.status === 'active' else 'btn-outline-success' }} btn-sm px-2"
-                          title="{{ 'Deactivate' if k.status === 'active' else 'Activate' }}">
+                          title="{{ 'Deactivate' if k.status === 'active' else ('Activate (payment status nahi badlega)' if canForce else 'Activate') }}"
+                          {% if k.status !== 'active' and canForce and k.payment_status === 'unpaid' %}onclick="return confirm('Activate {{ k.key_value }} without payment? Payment Unpaid hi rahega.')"{% endif %}>
                     <i class="fa-solid {{ 'fa-ban' if k.status === 'active' else 'fa-circle-check' }}"></i>
                     {{ 'Off' if k.status === 'active' else 'On' }}
                   </button>

@@ -83,6 +83,25 @@ exports.create = async (req, res, next) => {
   res.redirect('/keys');
 };
 
+// Sirf ye roles kisi bhi key ko bina payment ke force-active kar sakte hain
+const FORCE_ACTIVE_ROLES = ['controller', 'developer'];
+
+/**
+ * active/inactive switch ke DB fields. Controller/developer ka ON = force-active
+ * (due-lock se bachi rahegi, unpaid hote hue bhi chalegi); payment_status kabhi nahi badalta.
+ * Returns { updates } ya { error }.
+ */
+function statusUpdates(user, key, newSts) {
+  if (newSts === 'inactive') return { updates: { status: 'inactive', force_active: 0 } };
+  if (FORCE_ACTIVE_ROLES.includes(user.role)) {
+    return { updates: { status: 'active', due_lock: 0, force_active: 1 } };
+  }
+  if (Number(key.due_lock) === 1) {
+    return { error: 'Key dues ki wajah se locked hai — sirf Controller / Developer isse activate kar sakte hain.' };
+  }
+  return { updates: { status: 'active' } };
+}
+
 exports.toggleStatus = async (req, res, next) => {
   const user   = req.user;
   const keyId  = parseInt(req.body.id, 10);
@@ -94,10 +113,13 @@ exports.toggleStatus = async (req, res, next) => {
     if (key.status === 'expired') { req.flash('error', 'Cannot toggle an expired key.'); return res.redirect('/keys'); }
 
     const descIds = await User.getDescendantIds(user.id);
-    const authorized = key.created_by === user.id || descIds.includes(key.created_by);
+    const authorized = FORCE_ACTIVE_ROLES.includes(user.role)
+      || key.created_by === user.id || descIds.includes(key.created_by);
     if (!authorized) { req.flash('error', 'Permission denied.'); return res.redirect('/keys'); }
 
-    await Key.update(keyId, { status: newSts });
+    const { updates, error } = statusUpdates(user, key, newSts);
+    if (error) { req.flash('error', error); return res.redirect('/keys'); }
+    await Key.update(keyId, updates);
     // Running-count badla → bonus key activate/deactivate sync
     try { await Bonus.syncSeller(key.created_by); } catch (e) { console.error('[toggle Bonus]', e.message); }
     req.flash('success', 'Key status updated.');
@@ -302,14 +324,20 @@ exports.editKey = async (req, res, next) => {
     if (!key) { req.flash('error', 'Key not found.'); return res.redirect('/keys'); }
 
     const descIds    = await User.getDescendantIds(user.id);
-    const authorized = key.created_by === user.id || descIds.includes(key.created_by) || user.role === 'controller';
+    const authorized = key.created_by === user.id || descIds.includes(key.created_by) || FORCE_ACTIVE_ROLES.includes(user.role);
     if (!authorized) { req.flash('error', 'Permission denied.'); return res.redirect('/keys'); }
 
-    const updates = {};
-    if (status) updates.status = status;
+    let updates = {};
+    // Sirf status badalne par — warna expiry edit karte hi key force-active ho jaati
+    if ((status === 'active' || status === 'inactive') && status !== key.status) {
+      const r = statusUpdates(user, key, status);
+      if (r.error) { req.flash('error', r.error); return res.redirect('/keys'); }
+      updates = r.updates;
+    } else if (status === 'expired') {
+      updates.status = status;
+    }
     if (expiry_date && user.role === 'controller') updates.expiry_date = expiry_date;
-
-    await Key.update(keyId, updates);
+    if (Object.keys(updates).length) await Key.update(keyId, updates);
     req.flash('success', 'Key updated.');
   } catch (err) { return next(err); }
   res.redirect('/keys');

@@ -21,7 +21,7 @@ exports.getDashboard = async (req, res, next) => {
       const ticketToday = await Ticket.countToday();
       const totalTickets = await Ticket.count();
       const settings    = await Setting.getMany([
-        'demo_creation_enabled', 'download_zip_url',
+        'demo_creation_enabled', 'download_zip_url', 'updater_download_url',
         'gift_offer_enabled', 'gift_offer_message',
         'bonus_offer_enabled',
       ]);
@@ -69,9 +69,11 @@ exports.getDashboard = async (req, res, next) => {
 exports.postSettings = async (req, res, next) => {
   if (req.user.role !== 'controller') return res.redirect('/dashboard');
   try {
-    const { demo_enabled, download_zip_url, gift_offer_enabled, gift_offer_message, bonus_offer_enabled } = req.body;
+    const { demo_enabled, download_zip_url, updater_download_url, gift_offer_enabled, gift_offer_message, bonus_offer_enabled } = req.body;
     await Setting.set('demo_creation_enabled', demo_enabled === '1' ? '1' : '0');
     if (download_zip_url) await Setting.set('download_zip_url', download_zip_url.trim());
+    // Khali chhodne par login page se Updater button hat jaata hai
+    if (updater_download_url !== undefined) await Setting.set('updater_download_url', updater_download_url.trim());
     await Setting.set('gift_offer_enabled', gift_offer_enabled === '1' ? '1' : '0');
     if (gift_offer_message) await Setting.set('gift_offer_message', gift_offer_message.trim());
     await Setting.set('bonus_offer_enabled', bonus_offer_enabled === '1' ? '1' : '0');

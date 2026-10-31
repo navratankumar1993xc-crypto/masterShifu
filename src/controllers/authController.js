@@ -6,14 +6,16 @@ const Setting     = require('../models/Setting');
 const Key         = require('../models/Key');
 
 async function renderLogin(res, extra = {}) {
-  const [downloadUrl, demoEnabled] = await Promise.all([
+  const [downloadUrl, updaterUrl, demoEnabled] = await Promise.all([
     Setting.get('download_zip_url', ''),
+    Setting.get('updater_download_url', ''),
     Setting.get('demo_creation_enabled', '0'),
   ]);
   res.render('auth/login', {
     title: 'Login',
     error: null,
     downloadUrl,
+    updaterUrl,
     demoEnabled: demoEnabled === '1',
     ...extra,
   });

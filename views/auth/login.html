@@ -92,11 +92,18 @@
   </form>
   {% endif %}
 
-  {% if downloadUrl %}
-  <div class="text-center mt-3">
+  {% if downloadUrl or updaterUrl %}
+  <div class="d-flex justify-content-center flex-wrap gap-2 mt-3">
+    {% if downloadUrl %}
     <a href="{{ downloadUrl }}" class="btn btn-sm btn-outline-success" target="_blank">
       <i class="fa-solid fa-download me-1"></i> Download WEB_TS
     </a>
+    {% endif %}
+    {% if updaterUrl %}
+    <a href="{{ updaterUrl }}" class="btn btn-sm btn-outline-info" target="_blank">
+      <i class="fa-solid fa-arrows-rotate me-1"></i> Download Updater
+    </a>
+    {% endif %}
   </div>
   {% endif %}
 

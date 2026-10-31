@@ -118,6 +118,11 @@
                  value="{{ stats.settings.download_zip_url }}" placeholder="https://…"/>
         </div>
         <div class="col-md-6">
+          <label class="form-label fw-semibold">Updater Download URL</label>
+          <input type="url" name="updater_download_url" class="form-control"
+                 value="{{ stats.settings.updater_download_url }}" placeholder="https://… (blank = hide button)"/>
+        </div>
+        <div class="col-md-6">
           <label class="form-label fw-semibold">Gift Offer Message</label>
           <input type="text" name="gift_offer_message" class="form-control"
                  value="{{ stats.settings.gift_offer_message }}" placeholder="Offer message…"/>

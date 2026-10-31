@@ -14,6 +14,7 @@ async function migrate() {
     db.sqlite.exec(fs.readFileSync(path.join(__dirname, '..', '..', 'database', 'schema.sqlite.sql'), 'utf8'));
     await usernameColumn();
     await ticketColumns();
+    await keyColumns();
     console.log('[DB] Migrations complete (SQLite).');
     return;
   }
@@ -217,8 +218,21 @@ async function migrate() {
   // ── Username (email se alag) — username ya email dono se login ────────────────
   await usernameColumn();
   await ticketColumns();
+  await keyColumns();
 
   console.log('[DB] Migrations complete.');
+}
+
+/** Controller/developer ka force-activate: key unpaid rehte hue bhi chalti hai. */
+async function keyColumns() {
+  if (db.client === 'sqlite') {
+    const cols = db.sqlite.prepare(`PRAGMA table_info(keys)`).all().map(c => c.name);
+    if (!cols.includes('force_active')) {
+      db.sqlite.exec(`ALTER TABLE keys ADD COLUMN force_active INTEGER NOT NULL DEFAULT 0`);
+    }
+  } else {
+    await db.query(`ALTER TABLE keys ADD COLUMN IF NOT EXISTS force_active SMALLINT NOT NULL DEFAULT 0`);
+  }
 }
 
 /** Booking upload ke extra fields (desktop app PNR ke baad bhejta hai). */

@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS keys (
   due_lock       INTEGER      NOT NULL DEFAULT 0,
   created_at     TEXT         NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   is_bonus       INTEGER      NOT NULL DEFAULT 0,
-  cascade_from   INTEGER      DEFAULT NULL
+  cascade_from   INTEGER      DEFAULT NULL,
+  force_active   INTEGER      NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_keys_creator ON keys(created_by);
 CREATE INDEX IF NOT EXISTS idx_keys_status  ON keys(status);

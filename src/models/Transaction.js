@@ -149,6 +149,7 @@ const Transaction = {
     `);
 
     // Sync key due_lock: lock keys where any open ledger entry is overdue
+    // (controller/developer ki force-active keys ko chhod kar)
     await q.query(`
       UPDATE keys k
       SET due_lock = 1, status = 'inactive'
@@ -157,7 +158,7 @@ const Transaction = {
         WHERE l.key_id = k.id
           AND l.cleared_at IS NULL
           AND l.deadline <= NOW()
-      ) AND k.status != 'expired'
+      ) AND k.status != 'expired' AND k.force_active = 0
     `);
   },
 

@@ -3,8 +3,8 @@ const db  = require('../db/pool');
 const cfg = require('../config');
 const User = require('./User');
 
-const COLS     = 'id, key_value, status, payment_status, created_by, mac_id, mac_bound_at, expiry_date, due_lock, is_bonus, created_at';
-const COLS_K   = 'k.id, k.key_value, k.status, k.payment_status, k.created_by, k.mac_id, k.mac_bound_at, k.expiry_date, k.due_lock, k.is_bonus, k.created_at';
+const COLS     = 'id, key_value, status, payment_status, created_by, mac_id, mac_bound_at, expiry_date, due_lock, is_bonus, force_active, created_at';
+const COLS_K   = 'k.id, k.key_value, k.status, k.payment_status, k.created_by, k.mac_id, k.mac_bound_at, k.expiry_date, k.due_lock, k.is_bonus, k.force_active, k.created_at';
 
 const Key = {
   async findById(id, client) {

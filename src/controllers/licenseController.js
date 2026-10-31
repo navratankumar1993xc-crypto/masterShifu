@@ -79,8 +79,10 @@ exports.check = async (req, res) => {
 
     const isPaid = key.payment_status === 'paid';
     const days   = Key.calcLeftDays(key.expiry_date);
+    // Controller/developer ne force-active kiya → unpaid rehte hue bhi chalegi
+    const canRun = isPaid || Number(key.force_active) === 1;
 
-    if (key.status === 'active' && isPaid && days > 0) {
+    if (key.status === 'active' && canRun && days > 0) {
       return res.json({
         success: true, ok: true,
         message: 'success',
@@ -107,7 +109,7 @@ exports.check = async (req, res) => {
       });
     }
 
-    if (key.status === 'active' && !isPaid) {
+    if (key.status === 'active' && !canRun) {
       const msg = 'APKA ADMIN PAYMENT DUE HEIN, APNE SELLER SE CONTACT KRE!';
       return keyFail(msg, 'License Unpaid.');
     }

@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS keys (
   created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   is_bonus       SMALLINT     NOT NULL DEFAULT 0,    -- 365-day bonus key
   cascade_from   INTEGER      DEFAULT NULL,          -- branch deactivation source
+  force_active   SMALLINT     NOT NULL DEFAULT 0,    -- controller/developer ne bina payment ke ON kiya
   UNIQUE (key_value)
 );
 CREATE INDEX IF NOT EXISTS idx_keys_creator ON keys(created_by);
