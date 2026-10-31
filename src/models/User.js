@@ -186,6 +186,7 @@ const User = {
       )
       UPDATE keys SET status = 'inactive', cascade_from = $1
       WHERE created_by IN (SELECT id FROM tree) AND status = 'active'
+        AND force_active = 0
     `, [userId]);
   },
 

@@ -73,7 +73,7 @@ const Bonus = {
 
     // Maujooda (non-expired) bonus key
     const bRes = await q.query(
-      `SELECT id, status FROM keys
+      `SELECT id, status, force_active FROM keys
        WHERE created_by = $1 AND is_bonus = 1 AND status != 'expired'
        ORDER BY id DESC LIMIT 1`,
       [sellerId]
@@ -102,7 +102,8 @@ const Bonus = {
     }
 
     // Bonus key exists → running count ke hisaab se on/off (countdown nahi rukta)
-    if (running < cfgB.runningRequired && bonus.status === 'active') {
+    // Controller/developer ne force-active kiya → sync use band nahi karega
+    if (running < cfgB.runningRequired && bonus.status === 'active' && Number(bonus.force_active) !== 1) {
       await q.query("UPDATE keys SET status = 'inactive' WHERE id = $1", [bonus.id]);
       return { action: 'deactivated' };
     }

@@ -120,7 +120,7 @@ const Key = {
     if (status === 'inactive') {
       await q.query(
         `UPDATE keys SET status = 'inactive', due_lock = 0
-         WHERE created_by = $1 AND status = 'active'`,
+         WHERE created_by = $1 AND status = 'active' AND force_active = 0`,
         [sellerId]
       );
     } else {
